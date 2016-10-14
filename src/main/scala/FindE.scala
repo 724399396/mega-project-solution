@@ -5,7 +5,7 @@ object FindE extends App {
     x #:: naturalNum(x+1)
 
   def factorial(n: Int): Long =
-    Cache.cacheGet(n,
+    Cache.cacheGetLong(n,
       n match {
         case x if x <= 2 => x.toLong
         case x => x * factorial(x-1)
