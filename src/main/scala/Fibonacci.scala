@@ -5,7 +5,7 @@ object Fibonacci extends App {
   def fibonacci(n: Int): Long =
     Cache.cacheGet(n, 
       n match {
-        case x if x <= 2 => 1
+        case x if x < 2 => x.toLong
         case x => fibonacci(x-1) + fibonacci(x-2)
       })
 
