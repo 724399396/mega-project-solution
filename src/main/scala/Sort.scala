@@ -1,5 +1,5 @@
 object Sort extends App {
-  def mergeSort[A](list: List[A])(implicit ev: A => Int): List[A] = {
+  def mergeSort[A](list: List[A])(implicit ev: A => Ordered[A]): List[A] = {
     def merge(a: List[A], b: List[A]): List[A] = {
       (a,b) match {
         case (List(), _) => b
@@ -22,7 +22,7 @@ object Sort extends App {
 
   }
 
-  def bubbleSort[A <% Ordered[A]](list: List[A]): List[A] = {
+  def bubbleSort[A](list: List[A])(implicit ev: A => Ordered[A]): List[A] = {
     import scala.collection.mutable.MutableList
     val mutableList = list.foldLeft(MutableList[A]()) {
       case (acc,x) => acc += x

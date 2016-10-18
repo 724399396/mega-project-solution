@@ -8,5 +8,5 @@ object Factorial extends App {
 
   def natural(n: Int): Stream[Int] = n #:: natural(n+1)
 
-  println(natural(0).map(x => factorial(x)) take 100 toList)
+  println(natural(0).map(x => factorial(x)).take(100).toList)
 }
