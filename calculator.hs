@@ -4,6 +4,7 @@ module Main where
 import Control.Applicative
 import Control.Monad
 import Control.Arrow
+import Control.Monad.State
 import Data.List (span)
 import Safe (readMay)
 
@@ -47,54 +48,40 @@ data E a = Lit Double
          | Pow  a a
          deriving (Eq, Ord, Show, Functor)
 
-newtype P a = P { runP :: [Tok] -> Int -> (Maybe (a, [Tok]), Int) }
+type P a = StateT [Tok] Maybe a
 
-parse :: P a -> [Tok] -> (Maybe a, Int)
-parse p tok = first (fst <$>) $ runP p tok 0
-
-instance Functor P where
-  fmap f (P go) = P $ \toks n -> case go toks n of
-                                   (Nothing, n) -> (Nothing, n)
-                                   (Just (a, toks'), n') -> (Just (f a, toks'), n')
-                                   
-instance Applicative P where                             
-  pure a = P $ \toks n -> (Just (a, toks), n)
-  P ff <*> P xx = P $ \toks n ->
-    case ff toks n of
-      (Nothing, n) -> (Nothing, n)
-      (Just (f, toks'), n') -> case xx toks' n' of
-        (Nothing, n) -> (Nothing, n)
-        (Just (x, toks''), n'') -> (Just (f x, toks''), n'')
-
-instance Alternative P where
-  empty = P $ \_ _ -> (Nothing, 0)
-  P p1 <|> P p2 = P $ \toks n -> case p1 toks n of
-    (Nothing, _) -> p2 toks n
-    it@(Just res, n) -> it
+parse :: P a -> [Tok] -> Maybe a
+parse p tok = fst <$> runStateT p tok
 
 pRead :: Read a => P a
-pRead = P go where
-  go (Word x:rest) n = ((,rest) <$> readMay x, succ n)
-  go _             n = (Nothing, succ n)
+pRead = do
+  (Word x):rest <-get
+  put rest
+  lift $ readMay x
+  
 
 pSatisfy :: (String -> Bool) -> P String
-pSatisfy p = P go where
-  go (Word x:rest) n =
-    if p x then (Just (x, rest), succ n) else (Nothing, succ n)
-  go _             n = (Nothing, n)
+pSatisfy p = do
+  (Word x):rest <- get
+  guard (p x)
+  put rest
+  return x
+
 
 p :: String -> P String
 p s = pSatisfy (==s)
 
 pOpen :: P ()
-pOpen = P go where
-  go (Open:rest) n = (Just ((), rest), succ n)
-  go _           n = (Nothing, succ n)
+pOpen = do
+  Open:rest <- get
+  put rest
+  return ()
 
 pClose :: P ()
-pClose = P go where
-  go (Close:rest) n = (Just ((), rest), succ n)
-  go _            n = (Nothing, succ n)
+pClose = do
+  Close:rest <- get
+  put rest
+  return ()
 
 pParens :: P a -> P a
 pParens inner = pOpen *> inner <* pClose
@@ -151,6 +138,6 @@ main :: IO ()
 main = do
   l <- getLine
   case parse e (tokenize l) of
-    (Nothing, n)   -> putStrLn $ "No parse (" ++ show n ++ " tokens)"
-    (Just expr, _) -> print (cata evalF expr)
+    Nothing   -> putStrLn $ "Parse error"
+    Just expr -> print (cata evalF expr)
 
